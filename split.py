@@ -9,8 +9,8 @@ root_dir = 'path/to/your/dataset'  # Thư mục chứa images/ và labels/
 output_dir = 'path/to/output_split'
 
 # Cấu hình tỷ lệ chia theo điều kiện
-RATIO_MAJORITY = (0.7, 0.2, 0.1)  # Dành cho nhãn >= 50 (Train 70%, Val 20%, Test 10%)
-RATIO_MINORITY = (0.4, 0.3, 0.3)  # Dành cho nhãn < 50  (Train 40%, Val 30%, Test 30%)
+RATIO_MAJORITY = (0.7, 0.2, 0.1)  # Dành cho nhãn >= 100 (Train 70%, Val 20%, Test 10%)
+RATIO_MINORITY = (0.4, 0.3, 0.3)  # Dành cho nhãn < 100  (Train 40%, Val 30%, Test 30%)
 
 def get_image_labels(label_path):
     """Đọc file label và trả về danh sách các class id duy nhất trong ảnh đó"""
@@ -67,22 +67,21 @@ def split_dataset():
         
     class_counts = Counter(all_classes_global)
     
-    print("\n=== THỐNG KÊ SỐ LƯỢNG NHẠN BAN ĐẦU ===")
+    print("\n=== THỐNG KÊ SỐ LƯỢNG NHÃN BAN ĐẦU ===")
     for cls, count in sorted(class_counts.items()):
-        status = "🟢 Số lượng Tốt (>=50) -> Chia 7:2:1" if count >= 50 else "🔴 Số lượng Ít (<50) -> Chia 4:3:3"
+        # CẬP NHẬT: Đổi ngưỡng kiểm tra trực quan từ 50 thành 100
+        status = "🟢 Số lượng Tốt (>=100) -> Chia 7:2:1" if count >= 100 else "🔴 Số lượng Ít (<100) -> Chia 4:3:3"
         print(f"Nhãn [{cls}]: {count} instance(s) | {status}")
     print("=======================================\n")
 
     # BƯỚC 2: Phân loại từng file ảnh dựa trên nhãn hiếm nhất có trong bức ảnh đó
-    # Thuật toán này giúp gom các ảnh chứa nhãn hiếm vào một nhóm riêng để áp dụng tỷ lệ bảo vệ (4:3:3)
     grouped_files = {}  # Cấu trúc: class_id -> [danh sách các file]
     
     for f in all_files:
         classes = file_to_classes[f]
         if not classes:
-            rarest_class = "background" # Ảnh không nhãn mặc định thuộc nhóm đa số
+            rarest_class = "background"
         else:
-            # Tìm class có số lượng ít nhất trên toàn hệ thống nằm trong bức ảnh này
             rarest_class = min(classes, key=lambda c: class_counts[c])
             
         if rarest_class not in grouped_files:
@@ -91,7 +90,7 @@ def split_dataset():
 
     # BƯỚC 3: Tiến hành chia theo tỷ lệ tương ứng cho từng nhóm nhãn
     train_files, val_files, test_files = [], [], []
-    np.random.seed(42)  # Giữ kết quả xáo trộn cố định qua các lần chạy
+    np.random.seed(42)
     
     for group_name, files in grouped_files.items():
         shuffled_files = files.copy()
@@ -101,7 +100,8 @@ def split_dataset():
         if group_name == "background":
             r_train, r_val, r_test = RATIO_MAJORITY
         else:
-            if class_counts[group_name] < 50:
+            # CẬP NHẬT: Đổi điều kiện lọc từ 50 thành 100 ở đây
+            if class_counts[group_name] < 100:
                 r_train, r_val, r_test = RATIO_MINORITY
             else:
                 r_train, r_val, r_test = RATIO_MAJORITY
@@ -137,7 +137,7 @@ def split_dataset():
     print(f" └─ Tập Train: {len(train_files)} ảnh")
     print(f" └─ Tập Val:   {len(val_files)} ảnh")
     print(f" └─ Tập Test:  {len(test_files)} ảnh")
-    print("✅ Hoàn tất! Dữ liệu đã sẵn sàng để train và áp dụng Augmentation cho tập Train.")
+    print("✅ Hoàn tất! Dữ liệu đã chia theo ngưỡng điều kiện < 100.")
 
 if __name__ == "__main__":
     split_dataset()
