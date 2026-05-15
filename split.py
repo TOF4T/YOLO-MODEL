@@ -69,7 +69,7 @@ def split_dataset(root_dir, output_dir):
     print("\n=== THỐNG KÊ SỐ LƯỢNG NHÃN BAN ĐẦU ===")
     for cls, count in sorted(class_counts.items()):
         status = "🟢 >=100 (7:2:1)" if count >= 100 else "🔴 <100 (4:3:3)"
-        print(f"Nhãn [{cls+1}]: {count} | {status}")
+        print(f"Nhãn [{int(cls) + 1}]: {count} | {status}")
 
     grouped_files = {}
     for f in all_files:
