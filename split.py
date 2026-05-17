@@ -54,7 +54,7 @@ def split_dataset(root_dir, output_dir):
 
     # Tỷ lệ chia
     RATIO_MAJORITY = (0.7, 0.2, 0.1)
-    RATIO_MINORITY = (0.4, 0.3, 0.3)
+    RATIO_MINORITY = (0.5, 0.3, 0.2)
 
     all_classes_global = []
     file_to_classes = {}
