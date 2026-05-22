@@ -151,3 +151,7 @@ if __name__ == "__main__":
     
     if not df_features.empty:
         train_list, val_list, test_list = split_dataset(df_features)
+        copy_to_yolo_structure(RAW_IMG_DIR, RAW_TXT_DIR, OUTPUT_YOLO_DIR, train_list, val_list, test_list)
+    else:
+        print(f"\n[LỖI] Không tìm thấy dữ liệu ảnh/nhãn trong thư mục: {RAW_IMG_DIR}")
+        print("Vui lòng kiểm tra lại xem bạn đã giải nén dữ liệu vào đúng thư mục datapath chưa.")
