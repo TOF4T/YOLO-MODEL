@@ -2,7 +2,6 @@ import os
 import shutil
 import pandas as pd
 import numpy as np
-import argparse
 from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 
 def build_stratification_dataframe(img_dir, txt_dir):
@@ -82,78 +81,60 @@ def split_dataset(new_df):
     train_files = X_rest[train_idx].flatten().tolist()
     val_files = X_rest[val_idx].flatten().tolist()
     
-    print(f"   -> Đã chia Train: {len(train_files)} ảnh | Val: {len(val_files)} ảnh.")
+    print(f"   -> Đã chia Train: {len(train_files)} ảnh | Valid: {len(val_files)} ảnh.")
     return train_files, val_files, test_files
 
 def copy_to_yolo_structure(img_dir, txt_dir, output_dir, train_files, val_files, test_files):
     """
-    Bước 3: Tự động copy file vào các thư mục chuẩn YOLO.
+    Bước 3: Tự động copy file vào các thư mục theo format yêu cầu.
     """
-    print("\n3. Đang tổ chức thư mục chuẩn YOLO11...")
-    folders = ['train', 'val', 'test']
+    print("\n3. Đang tổ chức cấu trúc thư mục...")
+    # Cập nhật tên thư mục val thành valid
+    folders = ['train', 'valid', 'test']
+    
+    # Tạo cấu trúc: output_dir/{split}/images và output_dir/{split}/labels
     for folder in folders:
-        os.makedirs(os.path.join(output_dir, 'images', folder), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, 'labels', folder), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, folder, 'images'), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, folder, 'labels'), exist_ok=True)
 
     file_mapping = {
         'train': train_files,
-        'val': val_files,
+        'valid': val_files,
         'test': test_files
     }
 
     for split_name, files in file_mapping.items():
         for fname in files:
-            # Copy ảnh
+            # Copy ảnh vào .../{split}/images/
             src_img = os.path.join(img_dir, fname)
-            dst_img = os.path.join(output_dir, 'images', split_name, fname)
+            dst_img = os.path.join(output_dir, split_name, 'images', fname)
             if os.path.exists(src_img):
                 shutil.copy(src_img, dst_img)
             
-            # Copy nhãn
+            # Copy nhãn vào .../{split}/labels/ (nếu có)
             txt_name = os.path.splitext(fname)[0] + '.txt'
             src_txt = os.path.join(txt_dir, txt_name)
-            dst_txt = os.path.join(output_dir, 'labels', split_name, txt_name)
+            dst_txt = os.path.join(output_dir, split_name, 'labels', txt_name)
             if os.path.exists(src_txt):
                 shutil.copy(src_txt, dst_txt)
                 
     print(f"HOÀN TẤT! Dữ liệu đã sẵn sàng tại thư mục: {output_dir}")
 
 # ==========================================
-# THỰC THI CHƯƠNG TRÌNH
+# THỰC THI
 # ==========================================
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Chia tập dữ liệu YOLO đa nhãn 2 giai đoạn")
-    parser.add_argument('--datapath', type=str, required=True, help="Đường dẫn đến thư mục chứa dữ liệu")
-    parser.add_argument('--output', type=str, default="./YOLO11_Dataset", help="Thư mục đích xuất dữ liệu (mặc định: ./YOLO11_Dataset)")
-    args = parser.parse_args()
+    RAW_IMG_DIR = "./images"
+    RAW_TXT_DIR = "./labels"
+    OUTPUT_YOLO_DIR = "./YOLO11_Dataset"
+    
+    os.makedirs(RAW_IMG_DIR, exist_ok=True)
+    os.makedirs(RAW_TXT_DIR, exist_ok=True)
 
-    # Kiểm tra thông minh: Xem bên trong datapath có sẵn thư mục con images/labels không
-    if os.path.exists(os.path.join(args.datapath, "images")) and os.path.exists(os.path.join(args.datapath, "labels")):
-        RAW_IMG_DIR = os.path.join(args.datapath, "images")
-        RAW_TXT_DIR = os.path.join(args.datapath, "labels")
-        print("-> Nhận diện cấu trúc: Ảnh và Nhãn nằm trong 2 thư mục con riêng biệt.")
-    else:
-        RAW_IMG_DIR = args.datapath
-        RAW_TXT_DIR = args.datapath
-        print("-> Nhận diện cấu trúc: Ảnh và Nhãn nằm chung trong một thư mục.")
-
-    OUTPUT_YOLO_DIR = args.output
-
-    # Kiểm tra xem đường dẫn có tồn tại thực sự không
-    if not os.path.exists(RAW_IMG_DIR):
-        print(f"\n[LỖI] Không tìm thấy thư mục dữ liệu tại: {RAW_IMG_DIR}")
-        print("Vui lòng kiểm tra lại đường dẫn bạn truyền vào --datapath!")
-        exit(1)
-
-    # Chạy quy trình
     df_features = build_stratification_dataframe(RAW_IMG_DIR, RAW_TXT_DIR)
     
     if not df_features.empty:
-        try:
-            train_list, val_list, test_list = split_dataset(df_features)
-            copy_to_yolo_structure(RAW_IMG_DIR, RAW_TXT_DIR, OUTPUT_YOLO_DIR, train_list, val_list, test_list)
-        except Exception as e:
-            print(f"\n[LỖI THUẬT TOÁN] Đã xảy ra lỗi khi chia fold: {e}")
-            print("Nguyên nhân phổ biến: Có class chỉ xuất hiện quá ít lần (không đủ chia 10-fold). Hãy kiểm tra lại số lượng dữ liệu/nhãn!")
+        train_list, val_list, test_list = split_dataset(df_features)
+        copy_to_yolo_structure(RAW_IMG_DIR, RAW_TXT_DIR, OUTPUT_YOLO_DIR, train_list, val_list, test_list)
     else:
-        print("\n[LỖI DỮ LIỆU] Không tìm thấy bất kỳ file ảnh (.jpg, .png, .jpeg) nào trong thư mục nguồn!")
+        print("Không tìm thấy dữ liệu trong thư mục nguồn!")
