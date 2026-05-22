@@ -140,7 +140,7 @@ if __name__ == "__main__":
     # Thiết lập đường dẫn dựa trên tham số truyền vào
     RAW_IMG_DIR = os.path.join(args.datapath, "images")
     RAW_TXT_DIR = os.path.join(args.datapath, "labels")
-    OUTPUT_YOLO_DIR = os.path.join(args.datapath, "YOLO11_Dataset")
+    OUTPUT_YOLO_DIR = os.path.join(args.datapath, "Dataset_split")
     
     # Tạo thư mục nếu chưa tồn tại
     os.makedirs(RAW_IMG_DIR, exist_ok=True)
