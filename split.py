@@ -64,6 +64,23 @@ def build_stratification_dataframe(img_dir, txt_dir):
     grouped_df['avg_ratio'] = grouped_df['avg_h'] / (grouped_df['avg_w'] + 1e-6) 
 
     new_df = grouped_df.drop(columns=['w', 'h', 'box_count']).fillna(0)
+
+    # --- BẮT ĐẦU CÁC BƯỚC ĐIỀU CHỈNH ĐỂ TƯƠNG THÍCH VỚI ITERSTRAT ---
+
+    # 1. Binarize các cột class (Đưa về 0 hoặc 1)
+    for col in class_cols:
+        new_df[col] = (new_df[col] > 0).astype(int)
+
+    # 2. Rời rạc hóa (Binning) các giá trị liên tục thành các mốc nhị phân
+    for col in ['avg_w', 'avg_h', 'avg_ratio']:
+        # Chia dữ liệu thành 4 nhóm. duplicates='drop' phòng lỗi ranh giới trùng lặp
+        bins = pd.qcut(new_df[col], q=4, labels=False, duplicates='drop')
+        bin_dummies = pd.get_dummies(bins, prefix=f"{col}_bin")
+        new_df = pd.concat([new_df, bin_dummies], axis=1)
+
+    # 3. Loại bỏ các cột giá trị liên tục gốc (để iterstrat không bị nhầm lẫn)
+    new_df = new_df.drop(columns=['avg_w', 'avg_h', 'avg_ratio'])
+
     return new_df
 
 def split_dataset(new_df):
