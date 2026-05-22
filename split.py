@@ -92,7 +92,7 @@ def split_dataset(new_df):
     Y = new_df.drop(columns=['filename']).values
 
     # Giai đoạn 1: Lấy tập Test cố định (10-fold)
-    mskf_test = MultilabelStratifiedKFold(n_splits=10, shuffle=True, random_state=2026)
+    mskf_test = MultilabelStratifiedKFold(n_splits=10, shuffle=True, random_state=42)
     stage1_splits = list(mskf_test.split(X, Y))
     rest_index, test_index = stage1_splits[-1] 
     
@@ -101,7 +101,7 @@ def split_dataset(new_df):
 
     # Giai đoạn 2: Lấy 1 cặp Train/Valid từ dữ liệu còn lại (9-fold)
     X_rest, Y_rest = X[rest_index], Y[rest_index]
-    mskf_train = MultilabelStratifiedKFold(n_splits=9, shuffle=True, random_state=2026)
+    mskf_train = MultilabelStratifiedKFold(n_splits=9, shuffle=True, random_state=42)
     
     train_idx, val_idx = next(mskf_train.split(X_rest, Y_rest))
     train_files = X_rest[train_idx].flatten().tolist()
