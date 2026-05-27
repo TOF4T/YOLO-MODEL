@@ -30,18 +30,18 @@ def allocate_split_custom(n):
     
     # 2. Phân phối số ảnh còn lại theo tỷ lệ ban đầu (56% Train, 14% Valid, 30% Test)
     c_train = int(round(remaining * 0.56))
-    c_val = int(round(remaining * 0.14))
-    c_test += (remaining - c_train - c_val) # Phần dư còn lại dồn hết vào test
+    c_valid = int(round(remaining * 0.14)) # Đổi tên biến sang c_valid cho đồng bộ
+    c_test += (remaining - c_train - c_valid) # Phần dư còn lại dồn hết vào test
     
     # Kiểm tra và điều chỉnh phân phối nếu có lỗi làm tròn
-    current_total = c_train + c_val + c_test
+    current_total = c_train + c_valid + c_test
     while current_total > n:
         if c_test > 3: c_test -= 1
         elif c_train > 0: c_train -= 1
-        else: c_val -= 1
-        current_total = c_train + c_val + c_test
+        else: c_valid -= 1
+        current_total = c_train + c_valid + c_test
         
-    return c_train, c_val, c_test
+    return c_train, c_valid, c_test
 
 def split_dataset(root_dir, output_dir):
     img_dir = os.path.join(root_dir, 'images')
@@ -93,7 +93,7 @@ def split_dataset(root_dir, output_dir):
         key=lambda x: class_counts[x[0]] if x[0] != "background" else float('inf')
     )
 
-    train_files, val_files, test_files = [], [], []
+    train_files, valid_files, test_files = [], [], [] # Đổi tên biến sang valid_files
     np.random.seed(42)
     
     print("\n=== TIẾN TRÌNH CHIA DATA THEO CLASS (ƯU TIÊN CLASS ÍT) ===")
@@ -104,14 +104,14 @@ def split_dataset(root_dir, output_dir):
         c_tr, c_va, c_te = allocate_split_custom(len(shuffled))
         
         train_files.extend(shuffled[:c_tr])
-        val_files.extend(shuffled[c_tr:c_tr+c_va])
+        valid_files.extend(shuffled[c_tr:c_tr+c_va]) # Đổi tên biến gán tương ứng
         test_files.extend(shuffled[c_tr+c_va:])
         
         g_label = int(group_name) + 1 if group_name != "background" else "Background"
-        print(f"Class [{g_label}] (Tổng {len(shuffled)}): Chia -> Train: {c_tr} | Val: {c_va} | Test: {c_te}")
+        print(f"Class [{g_label}] (Tổng {len(shuffled)}): Chia -> Train: {c_tr} | Valid: {c_va} | Test: {c_te}")
 
-    # Tiến hành sao chép file vào các thư mục tương ứng
-    for set_name, files in {'train': train_files, 'val': val_files, 'test': test_files}.items():
+    # SỬA TẠI ĐÂY: Đã đổi key 'val' thành 'valid' để tạo thư mục tên Dataset_split/valid
+    for set_name, files in {'train': train_files, 'valid': valid_files, 'test': test_files}.items():
         img_out = os.path.join(output_dir, set_name, 'images')
         lbl_out = os.path.join(output_dir, set_name, 'labels')
         os.makedirs(img_out, exist_ok=True)
@@ -130,14 +130,13 @@ def split_dataset(root_dir, output_dir):
     print(f"Thư mục lưu kết quả: {output_dir}")
     print(f"Tổng số ảnh xử lý: {total}")
     print(f" 🟢 Train: {len(train_files)} ảnh ({len(train_files)/total*100:.2f}%)")
-    print(f" 🟡 Valid: {len(val_files)} ảnh ({len(val_files)/total*100:.2f}%)")
+    print(f" 🟡 Valid: {len(valid_files)} ảnh ({len(valid_files)/total*100:.2f}%)")
     print(f" 🔵 Test : {len(test_files)} ảnh ({len(test_files)/total*100:.2f}%)")
-    print("✅ Hoàn tất! Các class ít dữ liệu đã được đảm bảo có tối thiểu 3 hình ở tập Test.")
+    print("✅ Hoàn tất! Định dạng thư mục đầu ra hoàn toàn tương thích với code kiểm tra dữ liệu của bạn.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--datapath', type=str, required=True, help='Path to dataset (contains images/ and labels/)')
-    # Thay đổi giá trị mặc định của outpath thành /content/Dataset_split
     parser.add_argument('--outpath', type=str, default='/content/Dataset_split', help='Path to save split data')
     args = parser.parse_args()
     
