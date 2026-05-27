@@ -140,7 +140,7 @@ def split_dataset(root_dir, output_dir):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--datapath', type=str, required=True, help='Path to dataset (contains images/ and labels/)')
-    parser.add_argument('--outpath', type=str, default='/content/dataset_split', help='Path to save split data')
+    parser.add_argument('--outpath', type=str, default='/content/Dataset_split', help='Path to save split data')
     args = parser.parse_args()
     
     split_dataset(args.datapath, args.outpath)
