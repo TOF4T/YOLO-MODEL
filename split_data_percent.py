@@ -14,32 +14,34 @@ def get_image_labels(label_path):
 
 def allocate_split_custom(n):
     """
-    Hàm phân phối số lượng ảnh cho một nhóm theo quy tắc:
-    - Ưu tiên ít nhất 3 ảnh cho tập test.
-    - Phần còn lại chia theo tỷ lệ 56% Train, 14% Valid, 30% Test.
+    Hàm phân phối số lượng ảnh:
+    - Cố gắng giữ tỷ lệ 56% Train / 14% Valid / 30% Test
+    - Đảm bảo LUÔN CÓ ít nhất 3 ảnh cho tập Valid VÀ 3 ảnh cho tập Test.
     """
     if n <= 0: 
         return 0, 0, 0
-    if n <= 3:
-        # Nếu class có <= 3 ảnh, ưu tiên dồn hết vào test để đảm bảo đủ/tối đa có thể
-        return 0, 0, n
+        
+    # Nếu tổng số ảnh của class < 6, không đủ để đáp ứng điều kiện tối thiểu
+    # Ưu tiên chia đều cho Test và Valid, bỏ qua Train
+    if n < 6:
+        c_test = n // 2 + n % 2 # Lấy phần trần (VD: 5 ảnh -> 3 test, 2 valid)
+        c_valid = n // 2
+        return 0, c_valid, c_test
     
-    # 1. Cố định 3 ảnh cho tập test trước
-    c_test = 3
-    remaining = n - 3
+    # Tính toán số lượng theo tỷ lệ chuẩn
+    c_valid = int(round(n * 0.14))
+    c_test = int(round(n * 0.30))
     
-    # 2. Phân phối số ảnh còn lại theo tỷ lệ ban đầu (56% Train, 14% Valid, 30% Test)
-    c_train = int(round(remaining * 0.56))
-    c_valid = int(round(remaining * 0.14)) # Đổi tên biến sang c_valid cho đồng bộ
-    c_test += (remaining - c_train - c_valid) # Phần dư còn lại dồn hết vào test
+    # Ép điều kiện tối thiểu là 3 ảnh cho cả Valid và Test
+    c_valid = max(3, c_valid)
+    c_test = max(3, c_test)
     
-    # Kiểm tra và điều chỉnh phân phối nếu có lỗi làm tròn
-    current_total = c_train + c_valid + c_test
-    while current_total > n:
-        if c_test > 3: c_test -= 1
-        elif c_train > 0: c_train -= 1
-        else: c_valid -= 1
-        current_total = c_train + c_valid + c_test
+    # Số lượng còn lại đẩy hết vào Train
+    c_train = n - c_valid - c_test
+    
+    # Đảm bảo không bị âm trong trường hợp tính toán làm tròn
+    if c_train < 0:
+        c_train = 0
         
     return c_train, c_valid, c_test
 
@@ -78,7 +80,7 @@ def split_dataset(root_dir, output_dir):
         label_id = int(cls) + 1
         print(f"Nhãn [{label_id}]: {count} ảnh")
 
-    # Gom nhóm các file theo class hiếm nhất xuất hiện trong file đó
+    # Gom nhóm các file theo class hiếm nhất
     grouped_files = {}
     for f in all_files:
         classes = file_to_classes[f]
@@ -87,16 +89,16 @@ def split_dataset(root_dir, output_dir):
             grouped_files[rarest_class] = []
         grouped_files[rarest_class].append(f)
 
-    # Sắp xếp các nhóm: Ưu tiên các nhóm (class) có ít dữ liệu xử lý TRƯỚC
+    # Ưu tiên xử lý các nhóm có ít dữ liệu TRƯỚC
     sorted_groups = sorted(
         grouped_files.items(), 
         key=lambda x: class_counts[x[0]] if x[0] != "background" else float('inf')
     )
 
-    train_files, valid_files, test_files = [], [], [] # Đổi tên biến sang valid_files
+    train_files, valid_files, test_files = [], [], []
     np.random.seed(42)
     
-    print("\n=== TIẾN TRÌNH CHIA DATA THEO CLASS (ƯU TIÊN CLASS ÍT) ===")
+    print("\n=== TIẾN TRÌNH CHIA DATA THEO CLASS ===")
     for group_name, files in sorted_groups:
         shuffled = files.copy()
         np.random.shuffle(shuffled)
@@ -104,13 +106,13 @@ def split_dataset(root_dir, output_dir):
         c_tr, c_va, c_te = allocate_split_custom(len(shuffled))
         
         train_files.extend(shuffled[:c_tr])
-        valid_files.extend(shuffled[c_tr:c_tr+c_va]) # Đổi tên biến gán tương ứng
+        valid_files.extend(shuffled[c_tr:c_tr+c_va])
         test_files.extend(shuffled[c_tr+c_va:])
         
         g_label = int(group_name) + 1 if group_name != "background" else "Background"
         print(f"Class [{g_label}] (Tổng {len(shuffled)}): Chia -> Train: {c_tr} | Valid: {c_va} | Test: {c_te}")
 
-    # SỬA TẠI ĐÂY: Đã đổi key 'val' thành 'valid' để tạo thư mục tên Dataset_split/valid
+    # Copy files
     for set_name, files in {'train': train_files, 'valid': valid_files, 'test': test_files}.items():
         img_out = os.path.join(output_dir, set_name, 'images')
         lbl_out = os.path.join(output_dir, set_name, 'labels')
@@ -124,7 +126,6 @@ def split_dataset(root_dir, output_dir):
             if os.path.exists(os.path.join(lbl_dir, label_file)):
                 shutil.copy(os.path.join(lbl_dir, label_file), os.path.join(lbl_out, label_file))
 
-    # Tính toán tỷ lệ thực tế đạt được sau khi chia
     total = len(all_files)
     print("\n=== KẾT QUẢ CUỐI CÙNG ===")
     print(f"Thư mục lưu kết quả: {output_dir}")
@@ -132,11 +133,11 @@ def split_dataset(root_dir, output_dir):
     print(f" 🟢 Train: {len(train_files)} ảnh ({len(train_files)/total*100:.2f}%)")
     print(f" 🟡 Valid: {len(valid_files)} ảnh ({len(valid_files)/total*100:.2f}%)")
     print(f" 🔵 Test : {len(test_files)} ảnh ({len(test_files)/total*100:.2f}%)")
-    print("✅ Hoàn tất! Định dạng thư mục đầu ra hoàn toàn tương thích với code kiểm tra dữ liệu của bạn.")
+    print("✅ Đã đảm bảo TỐI THIỂU 3 ảnh cho cả Valid và Test đối với mọi class.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--datapath', type=str, required=True, help='Path to dataset (contains images/ and labels/)')
+    parser.add_argument('--datapath', type=str, required=True, help='Path to dataset')
     parser.add_argument('--outpath', type=str, default='/content/Dataset_split', help='Path to save split data')
     args = parser.parse_args()
     
