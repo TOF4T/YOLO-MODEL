@@ -30,7 +30,8 @@ def count_labels_in_splits(split_root):
                         class_id = str(int(parts[0]))
                         stats[split][class_id] += 1
 
-    all_classes = sorted(list(set().union(*(s.keys() for s in stats.values()))))
+    # Sửa tại đây: Thêm key=int để sắp xếp theo giá trị số học tăng dần
+    all_classes = sorted(list(set().union(*(s.keys() for s in stats.values()))), key=int)
 
     header = f"{'Class ID':<10} | {'Train':<10} | {'Valid':<10} | {'Test':<10} | {'Total':<10}"
     print(header)
