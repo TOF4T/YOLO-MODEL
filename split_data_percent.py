@@ -58,6 +58,10 @@ def split_dataset(root_dir, output_dir):
     for ext in valid_extensions:
         all_files_with_ext.extend(list(Path(img_dir).glob(f'*{ext}')))
     
+    # 🟢 ĐÃ SỬA LỖI: Sắp xếp danh sách file chuẩn theo bảng chữ cái
+    # Điều này đảm bảo tính tái lập tuyệt đối khi kết hợp với random.seed()
+    all_files_with_ext.sort()
+    
     all_files = [f.stem for f in all_files_with_ext]
     file_to_ext = {f.stem: f.suffix for f in all_files_with_ext}
 
@@ -96,6 +100,8 @@ def split_dataset(root_dir, output_dir):
     )
 
     train_files, valid_files, test_files = [], [], []
+    
+    # 🟢 GIỮ NGUYÊN: Cố định hạt giống sinh số ngẫu nhiên
     np.random.seed(42)
     
     print("\n=== TIẾN TRÌNH CHIA DATA THEO CLASS (ƯU TIÊN CLASS ÍT) ===")
