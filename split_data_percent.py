@@ -45,7 +45,10 @@ def allocate_split_custom(n):
         
     return c_train, c_valid, c_test
 
-def split_dataset(root_dir, output_dir):
+def split_dataset(root_dir, output_dir, random_seed=42):
+    # Khóa seed ngay từ đầu để đảm bảo tính tái lập (Reproducibility)
+    np.random.seed(random_seed)
+
     img_dir = os.path.join(root_dir, 'images')
     lbl_dir = os.path.join(root_dir, 'labels')
     
@@ -58,10 +61,10 @@ def split_dataset(root_dir, output_dir):
     for ext in valid_extensions:
         all_files_with_ext.extend(list(Path(img_dir).glob(f'*{ext}')))
     
-    # 🟢 ĐÃ SỬA LỖI: Sắp xếp danh sách file chuẩn theo bảng chữ cái
-    # Điều này đảm bảo tính tái lập tuyệt đối khi kết hợp với random.seed()
+    # QUAN TRỌNG: Sắp xếp danh sách file theo bảng chữ cái để 
+    # vô hiệu hóa sự xáo trộn ngẫu nhiên của hệ điều hành
     all_files_with_ext.sort()
-    
+
     all_files = [f.stem for f in all_files_with_ext]
     file_to_ext = {f.stem: f.suffix for f in all_files_with_ext}
 
@@ -80,9 +83,8 @@ def split_dataset(root_dir, output_dir):
     class_counts = Counter(all_classes_global)
     
     print("\n=== THỐNG KÊ SỐ LƯỢNG NHÃN BAN ĐẦU ===")
-    for cls, count in sorted(class_counts.items(), key=lambda x: x[1]):
-        label_id = int(cls) + 1
-        print(f"Nhãn [{label_id}]: {count} ảnh")
+    for cls, count in sorted(class_counts.items(), key=lambda x: int(x[0]) if x[0].isdigit() else x[0]):
+        print(f"Nhãn [{cls}]: {count} ảnh")
 
     # Gom nhóm các file theo class hiếm nhất xuất hiện trong file đó
     grouped_files = {}
@@ -93,16 +95,14 @@ def split_dataset(root_dir, output_dir):
             grouped_files[rarest_class] = []
         grouped_files[rarest_class].append(f)
 
-    # Sắp xếp các nhóm: Ưu tiên các nhóm (class) có ít dữ liệu xử lý TRƯỚC
+    # QUAN TRỌNG: Thêm tiêu chí phụ (x[0]) khi sắp xếp nhóm để 
+    # xử lý trường hợp 2 class có số lượng bằng nhau
     sorted_groups = sorted(
         grouped_files.items(), 
-        key=lambda x: class_counts[x[0]] if x[0] != "background" else float('inf')
+        key=lambda x: (class_counts[x[0]] if x[0] != "background" else float('inf'), x[0])
     )
 
     train_files, valid_files, test_files = [], [], []
-    
-    # 🟢 GIỮ NGUYÊN: Cố định hạt giống sinh số ngẫu nhiên
-    np.random.seed(42)
     
     print("\n=== TIẾN TRÌNH CHIA DATA THEO CLASS (ƯU TIÊN CLASS ÍT) ===")
     for group_name, files in sorted_groups:
@@ -115,7 +115,7 @@ def split_dataset(root_dir, output_dir):
         valid_files.extend(shuffled[c_tr:c_tr+c_va])
         test_files.extend(shuffled[c_tr+c_va:])
         
-        g_label = int(group_name) + 1 if group_name != "background" else "Background"
+        g_label = group_name if group_name != "background" else "Background"
         print(f"Class [{g_label}] (Tổng {len(shuffled)}): Chia -> Train: {c_tr} | Valid: {c_va} | Test: {c_te}")
 
     for set_name, files in {'train': train_files, 'valid': valid_files, 'test': test_files}.items():
@@ -139,12 +139,13 @@ def split_dataset(root_dir, output_dir):
     print(f" 🟢 Train: {len(train_files)} ảnh ({len(train_files)/total*100:.2f}%)")
     print(f" 🟡 Valid: {len(valid_files)} ảnh ({len(valid_files)/total*100:.2f}%)")
     print(f" 🔵 Test : {len(test_files)} ảnh ({len(test_files)/total*100:.2f}%)")
-    print("✅ Hoàn tất! Tỷ lệ đã được bám sát chuẩn 56/14/30 và ưu tiên tối đa dữ liệu cho tập Train.")
+    print("✅ Hoàn tất! Dữ liệu đã được chia cố định nhờ kiểm soát Random Seed và File Sort.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--datapath', type=str, required=True, help='Path to dataset (contains images/ and labels/)')
     parser.add_argument('--outpath', type=str, default='/content/Dataset_split', help='Path to save split data')
+    parser.add_argument('--seed', type=int, default=42, help='Random seed để cố định kết quả chia')
     args = parser.parse_args()
     
-    split_dataset(args.datapath, args.outpath)
+    split_dataset(args.datapath, args.outpath, random_seed=args.seed)
