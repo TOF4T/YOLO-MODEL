@@ -15,34 +15,31 @@ def get_image_labels(label_path):
 def allocate_split_custom(n):
     """
     Hàm phân phối số lượng ảnh:
-    - Tính chuẩn tỷ lệ: 56% Train, 14% Valid, 30% Test trên TỔNG SỐ ảnh.
-    - Ưu tiên dồn các ảnh dư do làm tròn vào tập Train.
+    - Tính chuẩn tỷ lệ: 56% Train, 14% Valid, 30% Test.
+    - [FIX] Đảm bảo có ÍT NHẤT 3 ảnh cho Valid và Test nếu nhóm đó có đủ số lượng (n >= 7).
+    - Ưu tiên dồn các ảnh dư vào tập Train.
     """
+    # Xử lý các trường hợp quá ít ảnh (không đủ để chia 3-3 cho valid và test)
     if n <= 0: return 0, 0, 0
     if n == 1: return 1, 0, 0 
     if n == 2: return 1, 0, 1 
     if n == 3: return 1, 1, 1 
+    if n == 4: return 2, 1, 1
+    if n == 5: return 3, 1, 1
+    if n == 6: return 2, 2, 2
 
-    # Tính theo tỷ lệ chuẩn trực tiếp trên n
+    # Nếu n >= 7, bắt đầu tính theo tỷ lệ
     c_train = int(round(n * 0.56))
     c_valid = int(round(n * 0.14))
     c_test = int(round(n * 0.30))
 
-    # Điều chỉnh nếu tổng bị lệch do sai số làm tròn
-    current_total = c_train + c_valid + c_test
-    
-    while current_total > n:
-        # Trừ bớt ở Test hoặc Valid trước để bảo vệ Train
-        if c_test > 1 and c_test > int(n * 0.30): c_test -= 1
-        elif c_valid > 1 and c_valid > int(n * 0.14): c_valid -= 1
-        else: c_train -= 1
-        current_total = c_train + c_valid + c_test
-        
-    while current_total < n:
-        # Nếu thiếu ảnh so với n, CỘNG HẾT VÀO TRAIN
-        c_train += 1
-        current_total = c_train + c_valid + c_test
-        
+    # [FIX] Ép điều kiện ít nhất 3 ảnh cho Valid và Test
+    c_valid = max(3, c_valid)
+    c_test = max(3, c_test)
+
+    # [FIX] Phần còn lại dồn hết vào Train để đảm bảo tổng số luôn bằng n
+    c_train = n - c_valid - c_test
+
     return c_train, c_valid, c_test
 
 def split_dataset(root_dir, output_dir):
@@ -57,6 +54,9 @@ def split_dataset(root_dir, output_dir):
     all_files_with_ext = []
     for ext in valid_extensions:
         all_files_with_ext.extend(list(Path(img_dir).glob(f'*{ext}')))
+    
+    # [FIX] Bắt buộc SORT danh sách file để đảm bảo tính nhất quán (reproducibility) qua các lần chạy
+    all_files_with_ext = sorted(all_files_with_ext)
     
     all_files = [f.stem for f in all_files_with_ext]
     file_to_ext = {f.stem: f.suffix for f in all_files_with_ext}
@@ -96,7 +96,9 @@ def split_dataset(root_dir, output_dir):
     )
 
     train_files, valid_files, test_files = [], [], []
-    np.random.seed(42)
+    
+    # Random seed giờ đã có tác dụng hoàn toàn chuẩn xác vì data đầu vào đã được sort
+    np.random.seed(42) 
     
     print("\n=== TIẾN TRÌNH CHIA DATA THEO CLASS (ƯU TIÊN CLASS ÍT) ===")
     for group_name, files in sorted_groups:
@@ -133,7 +135,7 @@ def split_dataset(root_dir, output_dir):
     print(f" 🟢 Train: {len(train_files)} ảnh ({len(train_files)/total*100:.2f}%)")
     print(f" 🟡 Valid: {len(valid_files)} ảnh ({len(valid_files)/total*100:.2f}%)")
     print(f" 🔵 Test : {len(test_files)} ảnh ({len(test_files)/total*100:.2f}%)")
-    print("✅ Hoàn tất! Tỷ lệ đã được bám sát chuẩn 56/14/30 và ưu tiên tối đa dữ liệu cho tập Train.")
+    print("✅ Hoàn tất! Thứ tự đã được cố định và các tập Validation/Test luôn đảm bảo có số lượng >=3.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
