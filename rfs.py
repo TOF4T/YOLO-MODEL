@@ -7,7 +7,7 @@ from collections import Counter
 
 def apply_repeat_factor_sampling(split_root, t=0.1, reduction='max'):
     """
-    Áp dụng Repeat-Factor Sampling trực tiếp bằng cách nhân bản file trong tập train.
+    Áp dụng Repeat-Factor Sampling 
     - t: Ngưỡng kiểm soát việc lấy mẫu dư (ví dụ: 0.1 nghĩa là lớp nào xuất hiện dưới 10% số ảnh sẽ được oversample).
     - reduction: Cách thu gọn hệ số khi ảnh có nhiều lớp ('max' hoặc 'mean').
     """
@@ -76,11 +76,9 @@ def apply_repeat_factor_sampling(split_root, t=0.1, reduction='max'):
         if random.random() < (r_i - rep_factor):
             rep_factor += 1
 
-        # Số lượng bản sao cần tạo thêm (rep_factor - 1)
         num_copies = rep_factor - 1
 
         if num_copies > 0:
-            # Tìm file ảnh gốc tương ứng với file txt nhãn
             img_path = None
             for ext in valid_extensions:
                 potential_path = os.path.join(img_dir, img_name_base + ext)
@@ -89,9 +87,8 @@ def apply_repeat_factor_sampling(split_root, t=0.1, reduction='max'):
                     break
 
             if not img_path:
-                continue # Bỏ qua nếu ảnh bị lệch hoặc thiếu file ảnh gốc
+                continue 
 
-            # Sao chép file nhãn và ảnh ra cùng một thư mục với hậu tố phân biệt
             for k in range(num_copies):
                 suffix = f"_rfs_{k+1}"
                 new_img_path = os.path.join(img_dir, f"{img_name_base}{suffix}{Path(img_path).suffix}")
@@ -103,6 +100,4 @@ def apply_repeat_factor_sampling(split_root, t=0.1, reduction='max'):
 
     print(f" Hoàn thành! Đã tạo thêm {copied_count} bản sao cho các ảnh chứa tail classes.")
 
-# Thực thi hàm áp dụng trực tiếp lên tập dữ liệu đã split của bạn
-# Bạn có thể tinh chỉnh t (0.05, 0.1, 0.2) tùy mức độ mất cân bằng dữ liệu của bạn
 apply_repeat_factor_sampling('/content/Dataset_split', t=0.1, reduction='max')
