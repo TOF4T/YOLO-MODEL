@@ -5,7 +5,7 @@ import math
 from pathlib import Path
 from collections import Counter
 
-def apply_repeat_factor_sampling(split_root, t=0.1, reduction='max'):
+def repeat_factor_sampling(split_root, t=0.1, reduction='max'):
     """
     Áp dụng Repeat-Factor Sampling 
     - t: Ngưỡng kiểm soát việc lấy mẫu dư (ví dụ: 0.1 nghĩa là lớp nào xuất hiện dưới 10% số ảnh sẽ được oversample).
@@ -60,10 +60,8 @@ def apply_repeat_factor_sampling(split_root, t=0.1, reduction='max'):
         if not classes_in_image:
             continue
 
-        # Lấy danh sách r_c của các class có mặt trong bức ảnh này
         r_constants = [r_c[c] for c in classes_in_image]
 
-        # Áp dụng cơ chế rút gọn reduction ('max' hoặc 'mean')
         if reduction == 'max':
             r_i = max(r_constants)
         elif reduction == 'mean':
@@ -71,7 +69,6 @@ def apply_repeat_factor_sampling(split_root, t=0.1, reduction='max'):
         else:
             r_i = max(r_constants)
 
-        # Xử lý phần thập phân bằng xác suất ngẫu nhiên
         rep_factor = int(r_i)
         if random.random() < (r_i - rep_factor):
             rep_factor += 1
@@ -100,4 +97,4 @@ def apply_repeat_factor_sampling(split_root, t=0.1, reduction='max'):
 
     print(f" Hoàn thành! Đã tạo thêm {copied_count} bản sao cho các ảnh chứa tail classes.")
 
-apply_repeat_factor_sampling('/content/Dataset_split', t=0.1, reduction='max')
+repeat_factor_sampling('/content/Dataset_split', t=0.1, reduction='max')
