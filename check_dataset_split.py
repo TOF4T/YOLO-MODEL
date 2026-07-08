@@ -40,7 +40,7 @@ def count_labels_in_splits(split_root):
                             # Ghi nhận class này có xuất hiện trong ảnh hiện tại
                             classes_in_image.add(class_id)
                         except ValueError:
-                            continue # Bỏ qua nếu dòng bị lỗi hoặc không phải số
+                            continue 
 
             # Cập nhật đếm số lượng ảnh cho mỗi class có mặt trong bức ảnh này
             for cls_id in classes_in_image:
