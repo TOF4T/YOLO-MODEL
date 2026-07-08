@@ -65,20 +65,20 @@ def build_stratification_dataframe(img_dir, txt_dir):
 
     new_df = grouped_df.drop(columns=['w', 'h', 'box_count']).fillna(0)
 
-    # --- BẮT ĐẦU CÁC BƯỚC ĐIỀU CHỈNH ĐỂ TƯƠNG THÍCH VỚI ITERSTRAT ---
+    # Điều chỉnh để add vào ITERSTRAT
 
-    # 1. Binarize các cột class (Đưa về 0 hoặc 1)
+    # 1. Nhị phân các cột class (Đưa về 0 hoặc 1)
     for col in class_cols:
         new_df[col] = (new_df[col] > 0).astype(int)
 
-    # 2. Rời rạc hóa (Binning) các giá trị liên tục thành các mốc nhị phân
+    # 2. Rời rạc hóa các giá trị liên tục thành các mốc nhị phân
     for col in ['avg_w', 'avg_h', 'avg_ratio']:
         # Chia dữ liệu thành 4 nhóm. duplicates='drop' phòng lỗi ranh giới trùng lặp
         bins = pd.qcut(new_df[col], q=4, labels=False, duplicates='drop')
         bin_dummies = pd.get_dummies(bins, prefix=f"{col}_bin")
         new_df = pd.concat([new_df, bin_dummies], axis=1)
 
-    # 3. Loại bỏ các cột giá trị liên tục gốc (để iterstrat không bị nhầm lẫn)
+    # 3. Loại bỏ các cột giá trị liên tục gốc 
     new_df = new_df.drop(columns=['avg_w', 'avg_h', 'avg_ratio'])
 
     return new_df
@@ -91,7 +91,7 @@ def split_dataset(new_df):
     X = new_df[['filename']].values
     Y = new_df.drop(columns=['filename']).values
 
-    # Giai đoạn 1: Lấy tập Test cố định (10-fold)
+    # Lấy 1 fold làm tập testing
     mskf_test = MultilabelStratifiedKFold(n_splits=10, shuffle=True, random_state=5)
     stage1_splits = list(mskf_test.split(X, Y))
     rest_index, test_index = stage1_splits[-1] 
@@ -99,7 +99,7 @@ def split_dataset(new_df):
     test_files = X[test_index].flatten().tolist()
     print(f"   -> Đã trích xuất {len(test_files)} ảnh làm tập Test cố định.")
 
-    # Giai đoạn 2: Lấy 1 cặp Train/Valid từ dữ liệu còn lại (9-fold)
+    # Lấy 1 cặp Train/Valid từ dữ liệu còn lại (9-fold)
     X_rest, Y_rest = X[rest_index], Y[rest_index]
     mskf_train = MultilabelStratifiedKFold(n_splits=9, shuffle=True, random_state=5)
     
@@ -145,11 +145,9 @@ def copy_to_yolo_structure(img_dir, txt_dir, output_dir, train_files, val_files,
                 
     print(f"HOÀN TẤT! Dữ liệu đã sẵn sàng tại thư mục: {output_dir}")
 
-# ==========================================
-# THỰC THI CHÍNH
-# ==========================================
+
 if __name__ == "__main__":
-    # Cấu hình đọc tham số từ dòng lệnh
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('--datapath', type=str, default='.', help='Đường dẫn tới thư mục gốc chứa thư mục images và labels')
     args = parser.parse_args()
@@ -159,11 +157,11 @@ if __name__ == "__main__":
     RAW_TXT_DIR = os.path.join(args.datapath, "labels")
     OUTPUT_YOLO_DIR = os.path.join(args.datapath, "Dataset_split")
     
-    # Tạo thư mục nếu chưa tồn tại
+    
     os.makedirs(RAW_IMG_DIR, exist_ok=True)
     os.makedirs(RAW_TXT_DIR, exist_ok=True)
 
-    # Chạy quy trình
+   
     df_features = build_stratification_dataframe(RAW_IMG_DIR, RAW_TXT_DIR)
     
     if not df_features.empty:
